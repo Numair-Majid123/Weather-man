@@ -1,0 +1,158 @@
+# frozen_string_literal: true
+
+# Weather Man
+require 'colorize'
+require 'date'
+require 'csv'
+# Function reading a file 1 time
+def read_file(year, month, path)
+  array = [0, '', 100, '', 0, '', 100, 100, 100] 
+  value = Date::MONTHNAMES[month]
+  d = value[0..2]
+  link = "#{path}_#{year}_#{d}.txt"
+  arr = CSV.read(link)
+  line_count = `wc -l "#{link}"`.strip.split(' ')[0].to_i
+  case path
+  when 'lahore_weather/lahore_weather'
+    j = 2
+    line_count = line_count.to_i - 2
+  else
+    j = 1
+    line_count = line_count.to_i - 1
+  end
+  until j > line_count
+    if arr[j][1].to_i > array[0]
+      array[0] = arr[j][1].to_i
+      array[1] = arr[j][0]
+    elsif arr[j][1].to_i < array[6]
+      array[6] = arr[j][1].to_i
+    end
+    if arr[j][3].to_i < array[2]
+      array[2] = arr[j][3].to_i
+      array[3] = arr[j][0]
+    elsif arr[j][3].to_i < array[7]
+      array[7] = arr[j][3].to_i
+    end
+    if arr[j][7].to_i > array[4]
+      array[4] = arr[j][7].to_i
+      array[5] = arr[j][0]
+    elsif arr[j][7].to_i < array[8]
+      array[8] = arr[j][7].to_i
+    end
+    j += 1
+  end
+  array
+end
+
+# This Function calls ReadFile function 12 times and then call OutputYear function for Output
+def year(year, path)
+  arr = [0, 100, 0, '', '', '']
+  i = 1
+  while i <= 12
+    highest = read_file(year, i, path)
+    if arr[0] < highest[0]
+      arr[0] = highest[0]
+      arr[3] = highest[1]
+    end
+    if arr[1] > highest[2]
+      arr[1] = highest[2]
+      arr[4] = highest[3]
+    end
+    if arr[2] < highest[4]
+      arr[2] = highest[4]
+      arr[5] = highest[5]
+    end
+    i += 1
+  end
+  output_year(arr)
+end
+
+# This Function calls ReadFile function 1 times and then call OutputMonth function for Output
+def month(year, path)
+  year = year.split('/')
+  mon = year[1].to_i
+  highest = read_file(year[0], mon, path)
+  highest[0] = (highest[0] + highest[6]) / 2
+  highest[2] = (highest[2] + highest[7]) / 2
+  highest[4] = (highest[4] + highest[8]) / 2
+  output_month(highest)
+end
+
+# This function read file 1 time and send result to DrawMonth function for Output
+def draw_whole_month(year, path)
+  year = year.split('/')
+  mon = year[1].to_i
+  value = Date::MONTHNAMES[mon]
+  d = value[0..2]
+  link = "#{path}_#{year[0]}_#{d}.txt"
+  arr = CSV.read(link)
+  line_count = `wc -l "#{link}"`.strip.split(' ')[0].to_i
+  date = 0
+  case path
+  when 'lahore_weather/lahore_weather'
+    j = 2
+    line_count = line_count.to_i - 2
+  else
+    j = 1
+
+    line_count = line_count.to_i - 1
+  end
+  date = 1
+  until j > line_count
+    draw_month(date, arr[j][1], arr[j][3])
+    j += 1
+    date += 1
+  end
+end
+
+# This function shows the output for yearly calculated data
+def output_year(arr)
+  tdat = arr[3].split('-')
+  ldat = arr[4].split('-')
+  hdat = arr[5].split('-')
+  puts("Highest: #{arr[0]}C on #{Date::MONTHNAMES[tdat[1].to_i]} #{tdat[2]}")
+  puts("Lowest: #{arr[1]}C on #{Date::MONTHNAMES[ldat[1].to_i]} #{tdat[2]}")
+  puts("Humid: #{arr[2]}% on #{Date::MONTHNAMES[hdat[1].to_i]} #{hdat[2]}")
+end
+
+# This function shows the output for monthly calculated data
+def output_month(arr)
+  puts("Highest Average: #{arr[0]}C")
+  puts("Lowest Average: #{arr[2]}C")
+  puts("Average Humidity: #{arr[4]}%")
+end
+
+# This function Draw lines for each day in month
+def draw_month(day, htemp, ltemp)
+  i = 0
+  print day
+  while i < ltemp.to_i
+    print '+'.blue
+    i += 1
+  end
+  i = 0
+  while i < htemp.to_i
+    print '+'.red
+    i += 1
+  end
+  print ltemp, 'C - ', htemp, 'C'
+  puts ' '
+end
+
+# The main function
+@input_array = ARGV
+@input_array[2] = "#{@input_array[2]}/#{@input_array[2]}"
+case @input_array[0]
+when '-e'
+  year(@input_array[1], @input_array[2])
+when '-a'
+  month(@input_array[1], @input_array[2])
+when '-c'
+  draw_whole_month(@input_array[1], @input_array[2])
+else
+  puts 'Invalid Input'
+end
+
+# ruby test.arb -c 2002/6 lahore_weather
+# ruby test.arb -e 2006 Murree_weather
+# ruby test.arb -a 2006/6 Dubai_weather
